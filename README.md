@@ -44,7 +44,7 @@ The production simulations will be run in separate folders created where the scr
 #### MM/ML Simulations
 
 We can also use the script to create a hybrid system using ani2x. To do this we have to add a flag to tell the script we want a hybrid 
-system and then tell it the residue name of the solute molecule we want to apply ani2x to.
+system and then tell it the residue name of the solute molecule we want to apply ani2x to. Note the platforms `CUDA` or `OpenCL` must be used here.
 
 ```
 python run_md.py mixture.pdb coumarin_parsley.xml acetonitrile_parsley.xml 2 -p CUDA
@@ -52,7 +52,7 @@ python run_md.py mixture.pdb coumarin_parsley.xml acetonitrile_parsley.xml 2 -p 
 
 ### 4. Extract
 
-One the production simulation is complete a script is provided in the `analysis` folder to extract a trajectory for the solute 
+Once the production simulation is complete a script is provided in the `analysis` folder to extract a trajectory for the solute 
 enclosed by a sphere of solvent within 27 angstroms of the centre of the solute. First move the script to the production folder 
 and copy in the starting topology. Then run 
 
