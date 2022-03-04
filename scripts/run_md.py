@@ -1,6 +1,6 @@
 from simtk.openmm import app
 from simtk import openmm, unit
-from typing import Optional
+from typing import Optional, Tuple
 from openmmml import MLPotential
 from typing_extensions import Literal
 import click
@@ -49,16 +49,19 @@ def build_simulation(
 
 def build_system(
     topology: app.Topology,
+    positions: unit.Quantity,
     force_field: app.ForceField,
     use_ani2x: bool,
     solute_resname: Optional[str] = None,
-) -> openmm.System:
+) -> Tuple[openmm.System, app.Topology, unit.Quantity]:
     """
     Build an openmm mm system from the topology and forcefield files.
 
     Args:
         topology:
             The topology of the system
+        positions:
+            The initial poistions of the system, used to calculate the positions of any virtual sites
         force_field:
             The force field that should be used to parameterise the system.
         use_ani2x:
@@ -67,12 +70,28 @@ def build_system(
             The residue name of the solute in the topology, this must be unique.
     """
     print("Building system")
-    mm_system = force_field.createSystem(
-        topology=topology,
-        nonbondedMethod=app.PME,
-        nonbondedCutoff=1 * unit.nanometer,
-        ewaldErrorTolerance=1e-4,
-    )
+    try:
+        mm_system = force_field.createSystem(
+            topology=topology,
+            nonbondedMethod=app.PME,
+            nonbondedCutoff=1 * unit.nanometer,
+            ewaldErrorTolerance=1e-4,
+        )
+        initial_positions = positions
+        initial_topology = topology
+
+    except ValueError:
+        modeller = app.Modeller(topology=topology, positions=positions)
+        modeller.addExtraParticles(forcefield=force_field)
+        mm_system = force_field.createSystem(
+            topology=modeller.topology,
+            nonbondedMethod=app.PME,
+            nonbondedCutoff=1 * unit.nanometer,
+            ewaldErrorTolerance=1e-4,
+        )
+        initial_positions = modeller.positions
+        initial_topology = modeller.topology
+
     if use_ani2x:
         if solute_resname is None:
             raise RuntimeError(
@@ -87,7 +106,7 @@ def build_system(
         ]
         mm_system = potential.createMixedSystem(topology, mm_system, ml_atoms)
 
-    return mm_system
+    return mm_system, initial_topology, initial_positions
 
 
 platforms = Literal["CPU"]
@@ -142,9 +161,13 @@ def run(
     """
     # load the topology and xml force field files
     pdbfile = app.PDBFile(topology_file)
+    # get input positions
+    positions = pdbfile.getPositions()
     ff = app.ForceField(solute_xml, solvent_xml)
-    system = build_system(
+    # create the system and get the correct initial positions
+    system, initial_topology, initial_positions = build_system(
         topology=pdbfile.topology,
+        positions=positions,
         force_field=ff,
         use_ani2x=use_ani2x,
         solute_resname=solute_resname,
@@ -157,13 +180,12 @@ def run(
         output.write(openmm.XmlSerializer.serializeSystem(system))
     simulation = build_simulation(
         system=system,
-        topology=pdbfile.topology,
+        topology=initial_topology,
         temperature=temperature,
         platform=platform,
     )
     # set the initial positions
-    positions = pdbfile.getPositions()
-    simulation.context.setPositions(positions)
+    simulation.context.setPositions(initial_positions)
     print("Minimising system energy...")
     simulation.minimizeEnergy()
     if not use_ani2x:
