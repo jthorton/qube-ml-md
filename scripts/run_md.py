@@ -55,13 +55,13 @@ def build_system(
     solute_resname: Optional[str] = None,
 ) -> Tuple[openmm.System, app.Topology, unit.Quantity]:
     """
-    Build an openmm mm system from the topology and forcefield files.
+    Build an openmm mm system from the topology and force field files.
 
     Args:
         topology:
             The topology of the system
         positions:
-            The initial poistions of the system, used to calculate the positions of any virtual sites
+            The initial positions of the system, used to calculate the positions of any virtual sites
         force_field:
             The force field that should be used to parameterise the system.
         use_ani2x:
