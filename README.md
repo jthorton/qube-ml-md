@@ -65,3 +65,10 @@ for help with this script try:
 ```
 python extract.py --help
 ```
+
+
+## Extra scripts
+
+Details of extra scripts are listed here.
+
+- ``make_sites_pdb.py``: process a pdb topology file with OpenMM and an xml force filed to calculate vsite positions and write the topology and new positions to file.
